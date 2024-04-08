@@ -35,11 +35,11 @@ import json, os
 from opencc import OpenCC
 from langdetect import detect
 
-key = ""
+key = "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"
 
 client = OpenAI(api_key=key)
 
-def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴黑板講解", output_path: str = "output.json", client=client):
+def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴黑板講解", output_path: str = "output.json", client=client, model="gpt-3.5-turbo"):
     """
     讀取資料夾中的所有檔案，使用 OpenAI API 生成問答集
     集合成一個 json 檔
@@ -51,7 +51,7 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
         messages = [{"role": "user", "content": prompt}]
         chat_completion = client.chat.completions.create(
             messages=messages,
-            model="gpt-3.5-turbo"
+            model=model
         )
         output = chat_completion.choices[0].message.content
         print("output:", output)
