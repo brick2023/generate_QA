@@ -35,7 +35,7 @@ import json, os
 from opencc import OpenCC
 from langdetect import detect
 
-key = "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"
+key = ""
 
 client = OpenAI(api_key=key)
 
@@ -49,10 +49,14 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
     
     def get_completion_json(prompt, model="gpt-3.5-turbo", try_times=3):
         messages = [{"role": "user", "content": prompt}]
-        chat_completion = client.chat.completions.create(
-            messages=messages,
-            model=model
-        )
+        try:
+            chat_completion = client.chat.completions.create(
+                messages=messages,
+                model=model
+            )
+        except Exception as e: # 如果發生錯誤，像是
+            print("Error:", e)
+            return get_completion_json(prompt, model="gpt-3.5-turbo", try_times=3)
         output = chat_completion.choices[0].message.content
         print("output:", output)
         # 檢查回傳值是否為 JSON 格式，若不是則再嘗試一次，最多嘗試 3 次，遞迴呼叫
