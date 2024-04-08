@@ -34,12 +34,13 @@ from openai import OpenAI
 import json, os
 from opencc import OpenCC
 from langdetect import detect
+import tiktoken
 
 key = ""
 
 client = OpenAI(api_key=key)
 
-def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴黑板講解", output_path: str = "output.json", client=client, model="gpt-3.5-turbo"):
+def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴黑板講解", output_path: str = "output.json", client=client, model="gpt-3.5-turbo", summary_path=None):
     """
     讀取資料夾中的所有檔案，使用 OpenAI API 生成問答集
     集合成一個 json 檔
@@ -54,9 +55,10 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
                 messages=messages,
                 model=model
             )
-        except Exception as e: # 如果發生錯誤，像是
+        except Exception as e: # 如果發生錯誤，像是重複的 prompt，就跳過這筆資料
             print("Error:", e)
-            return get_completion_json(prompt, model="gpt-3.5-turbo", try_times=3)
+            print("跳過此筆資料")
+            return None
         output = chat_completion.choices[0].message.content
         print("output:", output)
         # 檢查回傳值是否為 JSON 格式，若不是則再嘗試一次，最多嘗試 3 次，遞迴呼叫
@@ -78,6 +80,23 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
         with open(os.path.join(data_path, file), "r") as f:
             text_data = f.read()
 
+        # 計算 token 數量
+        encoding = tiktoken.get_encoding("cl100k_base")
+        num_tokens = len(encoding.encode(text_data))
+        print("num_tokens:", num_tokens)
+        if num_tokens > 4096:
+            print("超過 4096 token，使用 summary 來生成問答集")
+            if summary_path is None:
+                print("summary_path is None")
+                continue
+            # 到 summary_path 中找相同檔名的檔案
+            summary_file_path = os.path.join(summary_path, file)
+            if not os.path.exists(summary_file_path):
+                print("summary_file_path not exists")
+                continue
+            with open(summary_file_path, "r") as f:
+                text_data = f.read()
+
         # 簡體轉繁體
         cc = OpenCC("s2twp")
         text_data = cc.convert(text_data)
@@ -87,7 +106,7 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
         {text_data}
         \"\"\"
 
-        根據以上資料，生成相關的繁體中文問答集，產生約 15 筆資料, JSON 資料格式如下, instruction 為提問的內容, output 為回覆的內容, input 則保留空白：
+        根據以上資料，生成相關的繁體中文問答集，產生約 30 筆資料, JSON 資料格式如下, instruction 為提問的內容, output 為回覆的內容, input 則保留空白：
         [{{
             "instruction": "提問",
             "input": "",
