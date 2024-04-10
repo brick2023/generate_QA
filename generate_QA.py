@@ -48,7 +48,7 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
     output_path: str, 輸出 json 檔案路徑
     """
     
-    def get_completion_json(prompt, model="gpt-3.5-turbo", try_times=3):
+    def get_completion_json(prompt, model="gpt-3.5-turbo", try_times=4):
         messages = [{"role": "user", "content": prompt}]
         try:
             chat_completion = client.chat.completions.create(
@@ -61,7 +61,7 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
             return None
         output = chat_completion.choices[0].message.content
         print("output:", output)
-        # 檢查回傳值是否為 JSON 格式，若不是則再嘗試一次，最多嘗試 3 次，遞迴呼叫
+        # 檢查回傳值是否為 JSON 格式，若不是則再嘗試一次，最多嘗試 4 次，遞迴呼叫
         try:
             json_output = json.loads(output)
         except:
@@ -69,6 +69,20 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
                 return get_completion_json(prompt, model, try_times-1)
             else:
                 return None
+        # 並且要檢查格式為 [{instruction: str, input: str, output: str}, ...]
+        try:
+            if not isinstance(json_output, list):
+                return get_completion_json(prompt, model, try_times-1)
+            for qa in json_output:
+                if not isinstance(qa, dict):
+                    return get_completion_json(prompt, model, try_times-1)
+                if "instruction" not in qa or "input" not in qa or "output" not in qa:
+                    return get_completion_json(prompt, model, try_times-1)
+                if not isinstance(qa["instruction"], str) or not isinstance(qa["input"], str) or not isinstance(qa["output"], str):
+                    return get_completion_json(prompt, model, try_times-1)
+        except:
+            return None
+
         return json_output
 
     # 讀取文本資料，走訪資料夾
@@ -106,7 +120,7 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
         {text_data}
         \"\"\"
 
-        根據以上資料，生成相關的繁體中文問答集，產生約 30 筆資料, JSON 資料格式如下, instruction 為提問的內容, output 為回覆的內容, input 則保留空白：
+        根據以上資料，生成相關的繁體中文問答集，產生約 10 筆資料, JSON 資料格式如下, instruction 為提問的內容, output 為回覆的內容, input 則保留空白：
         [{{
             "instruction": "提問",
             "input": "",
@@ -127,10 +141,14 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
         
         # 檢測回答是否為繁體中文，並移除不符合條件的回答
         for qa in json_content:
-            if detect(qa["output"]) == "en":
-                # 移除不是繁體中文的回答
-                json_content.remove(qa)
-                continue
+            try:
+                if detect(qa["output"]) == "en":
+                    # 移除不是繁體中文的回答
+                    json_content.remove(qa)
+                    continue
+            except Exception as e:
+                print("detect error:", e)
+                print("detect 發生問題，跳過檢查")
             if qa["instruction"] == "" or qa["instruction"] == "提問":
                 # 移除 instruction 為空的回答
                 json_content.remove(qa)
