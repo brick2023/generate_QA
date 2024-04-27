@@ -34,6 +34,7 @@ from openai import OpenAI
 import json, os
 from opencc import OpenCC
 from langdetect import detect
+from rich import print
 import tiktoken
 
 key = ""
@@ -159,13 +160,18 @@ def generate_QA(data_path: str = "/home/brick2/plain_text/國中生物大雜燴�
                 continue
 
 
+        # 先讀取 output_path 的資料，再將新資料加入，最後存回 output_path
+        if os.path.exists(output_path):
+            with open(output_path, "r", encoding="utf-8") as f:
+                json_data_list = json.load(f)
+
         json_data_list.extend(json_content)
         print(json_data_list)
-        print("目前資料筆數:", len(json_data_list))
-
+        print(f"目前資料筆數: {len(json_data_list)}")
         # 將問答集存成 json 檔
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(json_data_list, f, ensure_ascii=False, indent=4)
+    return json_data_list
 
 # generate_QA(data_path="/home/brick2/plain_text/國中生物大雜燴黑板講解", output_path="gpt-generate-dataset-國中生物大雜燴黑板講解2.json")
 if __name__ == "__main__":
